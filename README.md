@@ -11,7 +11,9 @@ Square root transformation of variable "loan_amount" ensured the originally righ
 #### linearity, homoskedasticity, and independence are assumed and confirmed
 
 ### Statistical Approach
-H0: Demographic factors have no significant impact on loan approval rates and terms. H1: Demographic factors significantly influence loan approval rates and terms.
+- H0: Demographic factors have no significant impact on loan approval rates and terms.
+- H1: Demographic factors significantly influence loan approval rates and terms.
+
 Using the glm() function in R Studio, I fit a linear regression on the response variable "sqrt(loan_amount)" and 11 predictor variables.
 
 ## Results
