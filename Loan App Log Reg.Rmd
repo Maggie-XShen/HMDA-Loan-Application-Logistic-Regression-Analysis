@@ -1,5 +1,5 @@
 ---
-title: "MATH 2640 Final Project"
+title: "HMDA Loan Application Logistic Regression Analysis"
 author: "Maggie Shen"
 date: "2023-11-27"
 output: word_document
