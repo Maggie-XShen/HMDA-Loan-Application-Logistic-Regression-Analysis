@@ -5,8 +5,6 @@ date: "2023-11-27"
 output: word_document
 ---
 
-## 15ish slides
-
 ```{r}
 library(dplyr)
 library(GGally)
