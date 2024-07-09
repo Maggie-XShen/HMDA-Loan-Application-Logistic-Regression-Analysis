@@ -1,0 +1,134 @@
+---
+title: "HMDA Loan/Application Records Logistic Regression Analysis"
+author: "Maggie Shen"
+date: "2023-11-27"
+output: word_document
+---
+
+```{r}
+library(dplyr)
+library(GGally)
+library(data.table)
+options(warn=-1)
+```
+
+## Data Selection
+```{r}
+# Directly read shortened version instead
+
+#lar <- fread("~lar.csv")
+#lar <- lar %>% sample_n(20000)
+#dim(lar)
+ 
+#write.csv(lar, file='~/shortLAR.csv',fileEncoding = "UTF-8")
+```
+
+```{r}
+#summary(shortLAR_no_outliers)
+```
+
+## EDA of loan_amount
+```{r}
+shortLAR <- read.csv("~/Desktop/shortLAR.csv")
+View(shortLAR)
+dim(shortLAR)
+
+summary(shortLAR)
+summary(shortLAR$loan_amount)
+
+# Calculate the IQR (Interquartile Range)
+Q1 <- quantile(shortLAR$loan_amount, 0.25)
+Q3 <- quantile(shortLAR$loan_amount, 0.75)
+IQR <- Q3 - Q1
+
+# Define the lower and upper bounds to identify outliers
+lower_bdd <- Q1 - 1.5 * IQR
+upper_bdd <- Q3 + 1.5 * IQR
+
+# Identify outliers
+outliers <- shortLAR$loan_amount < lower_bdd | shortLAR$loan_amount > upper_bdd
+
+# Count the number of outliers
+cat("Number of outliers:", sum(outliers), "\n")
+
+# Remove outliers
+shortLAR_no_outliers <- shortLAR[!outliers, ]
+
+# Print summary statistics for the new dataset without outliers
+summary(shortLAR_no_outliers$loan_amount)
+
+# Histogram of loan amounts
+ggplot(data = shortLAR_no_outliers) + geom_histogram(fill = "pink", color = "black", aes(x = loan_amount)) + ggtitle("Loan Amount Distribution") + xlab("Loan Amount (USD)") + ylab("Frequency") 
+
+# Boxplots of loan_amount v.s. Derived race, ethnicity, sex, and state code
+ggplot(data = shortLAR_no_outliers, aes(factor(derived_race), loan_amount, fill = derived_race)) + geom_boxplot()+ ggtitle("Loan amount v.s. Derived race") + xlab("Derived race") + ylab("Loan amount")
+ggplot(data = shortLAR_no_outliers, aes(factor(derived_ethnicity), loan_amount, fill = derived_ethnicity)) + geom_boxplot()+ ggtitle("Loan amount v.s. Derived ethnicity") + xlab("Derived ethnicity") + ylab("Loan amount")
+ggplot(data = shortLAR_no_outliers, aes(factor(derived_sex), loan_amount, fill = derived_sex)) + geom_boxplot()+ ggtitle("Loan amount v.s. Derived sex") + xlab("Derived sex") + ylab("Loan amount")
+ggplot(data = shortLAR_no_outliers, aes(factor(state_code), loan_amount, fill = state_code)) + geom_boxplot()+ ggtitle("Loan amount v.s. State code") + xlab("State code ") + ylab("Loan amount")
+
+#violin plot of loan_amount v.s. state code
+ggplot(data = shortLAR_no_outliers, aes(factor(state_code), loan_amount, fill = state_code)) +
+  geom_violin() +
+  ggtitle("Loan amount v.s. State code") +
+  xlab("State code") +
+  ylab("Loan amount")
+
+##best type
+ggplot(data = shortLAR_no_outliers, aes(factor(action_taken), loan_amount)) + geom_boxplot()+ ggtitle("Loan amount v.s. Action taken") + xlab("Action taken") + ylab("Loan amount")
+
+# scatter plots of loan_amount v.s. income, median family income, and minority % in the area
+ggplot(data = shortLAR_no_outliers, aes(x = loan_amount, y = income)) + geom_point(alpha = 0.5) + ggtitle("Loan Amount vs. Income") + xlab("Income") + ylab("Loan Amount (USD)")
+ggplot(data = shortLAR_no_outliers, aes(x = loan_amount, y = ffiec_msa_md_median_family_income)) + geom_point(alpha = 0.5) + ggtitle("Loan Amount vs. Median family income") + xlab("loan amount") + ylab("median family income")
+ggplot(data = shortLAR_no_outliers, aes(x = round(tract_minority_population_percent), y = loan_amount)) + geom_point(alpha = 0.5) + ggtitle("Loan Amount vs. Minority % in the area") + xlab("minority % in the area") + ylab("loan amount")
+
+col_to_incl <- c("loan_amount", "tract_median_age_of_housing_units", "tract_population", "income", "ffiec_msa_md_median_family_income", "tract_minority_population_percent")
+print(GGally::ggpairs(shortLAR_no_outliers[, col_to_incl], progress = FALSE))
+```
+
+## Assumption testing ===================================================
+```{r}
+qqnorm((shortLAR_no_outliers$loan_amount),main="Normal Q-Q Plot of loan_amount")
+qqline((shortLAR_no_outliers$loan_amount))
+qqnorm(log(shortLAR_no_outliers$loan_amount),main="Normal Q-Q Plot of log loan_amount")
+qqline(log(shortLAR_no_outliers$loan_amount))
+
+hist(shortLAR_no_outliers$loan_amount,main="loan_amount")
+hist(log(shortLAR_no_outliers$loan_amount),main="log loan_amount")
+```
+
+## Collinearity ==============================================
+```{r}
+cor(shortLAR_no_outliers[,c('loan_amount','ffiec_msa_md_median_family_income','tract_minority_population_percent')])
+```
+
+
+## Model 1
+```{r}
+filtered_LAR <- shortLAR_no_outliers[-c(8391, 17473), ]
+
+model1 <- lm(
+  formula = sqrt(loan_amount) ~ derived_dwelling_category +
+    derived_ethnicity + derived_race + derived_sex +
+    loan_type + interest_rate + occupancy_type + income +
+    tract_population + tract_minority_population_percent +
+    ffiec_msa_md_median_family_income,
+  data = filtered_LAR
+)
+
+summary(model1)
+```
+
+
+## Model2
+```{r}
+model2 <- lm(
+  formula = sqrt(loan_amount) ~ derived_dwelling_category +
+    derived_ethnicity + derived_race + derived_sex +
+    loan_type + interest_rate + occupancy_type + income +
+    tract_population + ffiec_msa_md_median_family_income, 
+  data = filtered_LAR
+)
+
+summary(model2)
+
+```
